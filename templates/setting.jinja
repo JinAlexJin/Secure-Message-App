@@ -1,0 +1,53 @@
+{% extends 'base.jinja' %}
+
+{% block content %}
+    <h1>Settings</h1>
+    
+    <form id="settingsForm">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username">
+        </div>
+        <div>
+            <button type="button" onclick="muteUser()">Mute</button>
+            <button type="button" onclick="unmuteUser()">Unmute</button>
+        </div>
+        <div>
+            <label for="role">Change Role:</label>
+            <select id="role" name="role">
+                <option value="administrative">Administrative</option>
+                <option value="student">Student</option>
+                <option value="admin">Admin</option>
+                <option value="academics">Academics</option>
+            </select>
+            <button type="button" onclick="changeUserRole()">Change Role</button>
+        </div>
+    </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+    <script src="/static/js/libs/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+    <script>
+        const socket = io();
+        function muteUser() {
+            const username = document.getElementById('username').value;
+            socket.emit("mute_user", username);
+            alert('Muting: ' + username);
+        }
+
+        function unmuteUser() {
+            const username = document.getElementById('username').value;
+            socket.emit("unmute_user", username);
+            alert('Unmuting: ' + username);
+        }
+
+        function changeUserRole() {
+            const username = document.getElementById('username').value;
+            const newRole = document.getElementById('role').value;
+            socket.emit("change_role", username, newRole);
+            alert('Changing role for ' + username + ' to ' + newRole);
+            // Implement role change functionality or API call here
+        }
+    </script>
+{% endblock %}

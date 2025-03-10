@@ -1,0 +1,14 @@
+- [] User login
+- [] Friends
+  - [] Add friends
+  - [] Show friens
+  - [] Click on friends
+- [] Encrypt message so server cannot read it
+- [] Use HMAC so users can be sure server hasn't modified the messages
+- [] Store encrypted message history
+  - [] Display message history when user opens a chatroom session
+  - [] User's password should be key or drive the key and server shouldn't know
+- [] Properly store passwords on the server using hash and salt
+- [] Use HTTPS
+  - [] Browser warning like "this site is not secure" should not appear
+- [] All requests to the server are properly authenticated

@@ -1,0 +1,920 @@
+<!-- 
+    Here you'll find the main exhibit: the chat application code. Feel free to look around!
+-->
+{% extends 'base.jinja' %}
+
+
+{% block content %} 
+   <style>
+    nav {
+        border-bottom: 1px solid black;
+        overflow: auto }
+
+    #message_box {
+        border: 1px solid black; 
+        height: 400px; 
+        width: 800px; 
+        overflow: auto;
+        padding: 2px;
+    }
+
+    .text  {
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+
+    html, body {
+        height: 100vh; /* Use viewport height here to ensure full height is covered */
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Prevents scrolling on the body */
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        display: flex;
+        width: 100%;
+        height: calc(100vh - 70px); /* Ensuring the container takes up the entire viewport height */
+        overflow: hidden; /* Prevents additional scroll bars */
+    }
+
+    .friends-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    }
+
+    #groupChatPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        right: 20px;
+        top: 50px;
+        width: 300px;
+        height: 200px;
+        border: 1px solid black;
+        background-color: white;
+        z-index: 100;
+        padding: 20px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between; /* Aligns children to each end */
+        align-items: center; /* Aligns children vertically in the center */
+    }
+
+    .friends-list {
+        display: flex;
+        flex-direction: column;
+        height: 100%; /* Example fixed height, adjust based on your layout needs */
+        border: 1px solid #ccc; /* Optional: adds a border around the friends list */
+        margin: 10px;
+        padding: 5px;
+        background-color: #f9f9f9; /* Light background color for the list */
+    }
+
+    .friend-list, .group-chat-list {
+        overflow-y: auto; /* Adds scroll if the list is too long */
+        flex: 1; /* Each list takes equal space */
+        margin: 0;
+        padding: 0;
+    }
+
+    .friends-header, .group-chats-header {
+        padding: 10px;
+        background-color: #e8e8e8; /* Slightly darker shade for headers */
+        font-weight: bold;
+        border-bottom: 1px solid #d3d3d3; /* Adds a subtle line under the header */
+    }
+
+    .friends-list {
+        flex: 1;
+        padding: 0;
+        background-color: #f3f3f3;
+        overflow: hidden; /* Prevents additional scroll bars */
+    }
+
+    .friends-header {
+        font-size: 24px; /* Larger font size */
+        font-weight: bold; /* Makes the text bold */
+        color: #333; /* Dark gray color for better readability */
+        padding-bottom: 10px; /* Space between header and list */
+        margin-bottom: 10px; /* Adds bottom margin to separate from the list */
+        border-bottom: 2px solid #ccc; /* Subtle line under the text */
+        text-align: center; /* Centers the text */
+        position: sticky;
+        top: 0; /* Sticks to the top of the container */
+        background-color: inherit; /* Ensures the background matches the friends list */
+        z-index: 1; /* Ensures it stays on top during scrolling */
+    }
+
+    .friend-list {
+        overflow-y: auto; /* Makes the list scrollable */
+        height: 100%; /* Adjust height based on the header size */
+        margin: 0;
+        padding: 0;
+        list-style-type: none; /* Removes bullet points */
+    }
+
+    .friends-list .text {
+        font-size: 24px; /* Larger font size */
+        font-weight: bold; /* Makes the text bold */
+        color: #333; /* Dark gray color for better readability */
+        padding: 10px 0; /* Adds vertical padding above and below the text */
+        margin: 0 0 10px 0; /* Adds bottom margin to separate from the list */
+        border-bottom: 2px solid #ccc; /* Optional: adds a subtle line under the text */
+        text-align: center; /* Centers the text */
+    }
+
+    .chat-box {
+        flex: 3;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+        min-height: 0;
+    }
+
+    .chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto; /* Ensures this part is scrollable */
+        min-height: 0;
+    }
+
+    .chat-form {
+        display: flex;
+        width: 100%;
+        height: 50px;
+        flex-shrink: 0;
+    }
+
+    .chat-form input[type="text"] {
+        flex-grow: 1;
+        padding: 8px;
+        border: 1px solid #ccc
+    }
+
+    .chat-form button {
+        padding: 8px 16px;
+        cursor: pointer;
+    }
+
+    ul.friend-list {
+        list-style-type: none; /* Removes bullet points */
+        padding: 0; /* Removes default padding */
+        margin: 0; /* Removes default margin */
+    }
+
+    li.friend {
+        border: 1px solid #ccc; /* Adds a subtle border to each friend item */
+        padding: 8px; /* Adds padding inside each item for better spacing */
+        margin-bottom: 5px; /* Adds space between items */
+    }
+
+    li.friend a {
+        text-decoration: none; /* Removes underline from links */
+        color: black; /* Sets text color */
+        display: block; /* Makes the link fill the entire list item for easier clicking */
+    }
+
+    .friend-list li, .group-chat-list li {
+        padding: 10px;
+        border-bottom: 1px solid #eee; /* Adds a subtle line between items */
+        list-style: none; /* Removes bullet points */
+    }
+
+    .friend-list li a, .group-chat-list li a {
+        color: #333; /* Dark text for better readability */
+        text-decoration: none; /* Removes underline */
+        display: block; /* Makes the entire list item clickable */
+    }
+
+    .friend-list li a:hover, .group-chat-list li a:hover {
+        background-color: #f0f0f0; /* Light grey background on hover */
+    }
+
+    button {
+        padding: 5px 10px;
+        cursor: pointer;
+    }
+
+    #friendsPopup {
+        padding: 20px;
+        position: fixed;
+        right: 20px;
+        top: 50px;
+        width: 300px;
+        max-height: 400px; /* Set a maximum height */
+        border: 1px solid black;
+        background-color: white;
+        z-index: 100;
+        overflow-y: auto; /* Enables vertical scrolling if content exceeds the max-height */
+    }
+
+    #createGroupChatBtn {
+        padding: 5px 10px;
+        font-size: 0.8em;
+        margin-left: 10px; /* Adds a little space to the left of the button */
+        cursor: pointer;
+    }
+
+    .friend {
+        list-style-type: none; /* Removes bullet points */
+    }
+
+    .group-chat-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .group-chat-list button {
+        padding: 5px 10px;
+        margin-left: 10px;  /* Spacing between group name and button */
+    }
+
+    /* Popup styles */
+    #addUserPopup {
+        display: flex;  /* Uses flex to center the inner box */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);  /* Semi-transparent background */
+        z-index: 100;
+    }
+    #addUserPopup > div {
+        background-color: white;
+        padding: 20px;
+        width: 300px;  /* Fixed width for the popup */
+    }
+
+    #addFriendPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 100;
+    }
+
+    #friendRequestsPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px; /* Define width to accommodate both lists */
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 100;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1); /* Optional: adds shadow for better visibility */
+    }
+
+    #incomingRequests, #outgoingRequests {
+        height: 200px;
+        overflow-y: auto; /* Enables scrolling */
+        border: 1px solid #ccc; /* Adds border for better definition */
+        padding: 10px;
+    }
+
+    .friend-requests li, .friend-requests_out li {
+        border-bottom: 1px solid #ccc;
+        padding: 10px;
+        list-style-type: none; /* Removes default list bullets */
+    }
+
+    .friend-requests li button, .friend-requests_out li button {
+        margin-left: 10px;
+    }
+
+    /* You might want to add some hover effects for better UI experience */
+    .friend-requests li button:hover, .friend-requests_out li button:hover {
+        background-color: #e0e0e0;
+    }
+
+    .friend-requests .req span {
+        display: block; /* Makes the span take the full width of its container */
+        padding: 8px 12px; /* Padding for better touch area and visibility */
+        margin: 5px 0; /* Space between items */
+        border: 1px solid #ccc; /* Border around the name */
+        border-radius: 4px; /* Optional: rounded corners for the border */
+        transition: background-color 0.3s, border-color 0.3s; /* Smooth transition for hover effects */
+        cursor: pointer; /* Changes the cursor to indicate it's clickable */
+    }
+
+    .friend-requests .req span:hover {
+        background-color: #f0f0f0; /* Light grey background on hover */
+        border-color: #999; /* Darker border on hover */
+    }
+
+    #confirmPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 105;
+    }
+
+    a, button {
+        padding: 5px 10px;
+        margin: 2px;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        text-decoration: none; /* Remove underline from links */
+        color: black; /* Set text color for the link */
+    }
+
+    a:hover, button:hover {
+        background-color: #e0e0e0; /* Hover effect */
+    }
+
+
+
+</style>
+
+<!--Navbar, you'll see the username here-->
+<nav style="border-bottom: 1px solid black;">
+    <ol style="float: left">
+        <li style="display:inline-block">{{ username }}</li>
+    </ol>
+    <ol style="float: right">
+        <li style="display: inline-block;"><button id="friendsBtn">Friends</button></li>
+        <li style="display: inline-block;"><button id="addFriendBtn">Add Friend</button></li>
+        <li style="display: inline-block;"><button id="friendRequestsBtn">Friend Requests</button></li>
+        <li style="display: inline-block;"><button onclick="goToForum()">Forum</button></li>
+    </ol>
+</nav>
+
+
+<div id="friendsPopup" style="display: none; position: fixed; right: 20px; top: 50px; width: 300px; height: 400px; border: 1px solid black; background-color: white; z-index: 100;">
+    <p>Friends List</p>
+    <ul id="friendsList"></ul> <!-- This is where friends will be dynamically inserted -->
+</div>
+<div id="addFriendPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; background-color: white; border: 1px solid black; z-index: 100;">
+    <input type="text" id="friendUsername" placeholder="Enter friend's username">
+    <button onclick="sendFriendRequest()">Send Request</button>
+</div>
+<div id="friendRequestsPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; padding: 20px; background-color: white; border: 1px solid black; z-index: 100;">
+    <div style="display: flex; justify-content: space-between;">
+        <div style="width: 45%;">
+            <p class="text">Friend requests received:</p>
+            <ul class="friend-requests" style="height: 200px; overflow-y: auto;">
+                {% for req in reqs %}
+                    <li class="req">
+                        <span id="req-name-{{ req.name }}" onclick="showConfirmPopup('{{ req.name }}')" style="cursor: pointer;">{{ req.name }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div style="width: 45%;">
+            <p class="text">Friend requests sent:</p>
+            <ul class="friend-requests_out" style="height: 200px; overflow-y: auto;">
+                {% for req in reqs_out %}
+                    <li class="req">
+                        <span id="req-name-{{ req.name }}">{{ req.name }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+<!-- Confirmation Popup for accepting or rejecting friend requests -->
+<div id="confirmPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; background-color: white; border: 1px solid black; z-index: 105;">
+    <p>Do you want to accept or reject this friend request?</p>
+    <button onclick="allowReq()">Accept</button>
+    <button onclick="rejectReq()">Reject</button>
+</div>
+
+<main>
+
+    <!--
+    <section id="friends_requests">
+        <p class="text">Friend requests received: </p>
+        <ul class="friend-requests">
+            {% for req in reqs %}
+                <li class="req">
+                    <span id="req-name-{{ req.name }}">{{ req.name }}</span>
+                    <button onclick=allowReq("{{ req.name }}")>Accept</button>
+                    <button onclick=rejectReq("{{ req.name }}")>Reject</button>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section id="friends_requests_out">
+        <p class="text">Friend requests sent: </p>
+        <ul class="friend-requests_out">
+            {% for req in reqs_out %}
+                <li class="req">
+                    <span id="req-name-{{ req.name }}">{{ req.name }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section id="send_req">
+        <p class="input_username">Send friend request: </p>
+        <input id="receiver_req" placeholder="username">
+        <button onclick="send_req()">Send Request</button>
+    </section>
+    -->
+
+    <div class="container">
+        <div class="friends-list">
+            <div class="friends-header">
+                <p>Chats</p>
+            </div>
+            <ul class="friend-list">
+                {% for friend in friends %}
+                    {% if mute == 'false' %}
+                        <li class="friend">
+                            <a href="#" onclick=join_room_friends("{{friend.name}}")>
+                                <span id="friend-name-{{ friend.name }}">{{ friend.name }}</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="friend">
+                            <span id="friend-name-{{ friend.name }}">{{ friend.name }}</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+
+
+            <div class="group-chats-header">
+                <div class="header-content">
+                    <p>Group Chats</p>
+                    <button id="createGroupChatBtn">Create Group</button>
+                </div>
+            </div>
+            <ul class="group-chat-list">
+                {% for group in group_chats %}
+                    {% if mute == 'false' %}
+                        <li class="group-chat">
+                            <a href="#" onclick="join_group_chat('{{ group.name }}')">
+                                <span id="group-name-{{ group.name }}">{{ group.name }}</span>
+                            </a>
+                            <button onclick="openAddUserPopup('{{ group.name }}')">Add Users</button>
+                        </li>
+                    {% else %}
+                        <li class="group-chat">
+                            <span id="group-name-{{ group.name }}">{{ group.name }}</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="chat-box">
+            <div class="chat-messages">
+            </div>
+            <section class="chat-form">
+                <input type="text" id="message" placeholder="Type your message here..." autocomplete="off">
+                <button type="button" onclick="send()">Send</button>
+            </section>
+        </div>
+    </div>
+
+
+    <div id="groupChatPopup" style="display: none; position: fixed; right: 20px; top: 100px; width: 300px; height: 200px; border: 1px solid black; background-color: white; z-index: 100; padding: 20px;">
+        <p>Create Group Chat</p>
+        <input type="text" id="groupChatName" placeholder="Group Name">
+        <button onclick="createGroupChat()">Create</button>
+        <button onclick="closePopup()">Cancel</button>
+    </div>
+
+    <div id="addUserPopup" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; width: 300px; position: relative;">
+            <input type="text" id="newUser" placeholder="Enter username">
+            <button onclick="addUserToGroup()">Add</button>
+        </div>
+    </div>
+
+
+
+</main>
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+<script>
+
+    function goToForum() {
+        var url = "{{ url_for('forum', username=username) }}"; // Flask generates URL
+        window.open(url, "_self");
+    }
+
+    let room_id = 0;
+
+    let currentRequest = null; // This will hold the name of the currently selected friend request
+
+    function showConfirmPopup(name) {
+        currentRequest = name; // Set the current request
+        document.getElementById('confirmPopup').style.display = 'block'; // Show the confirmation popup
+        event.stopPropagation(); // Stop propagation to avoid triggering the window's click event
+    }
+
+
+
+    function allowReq() {
+        // Add your logic here for when the user allows the top-up
+        socket.emit("accept_req", username, currentRequest, (res) => {
+            alert("Friend Added!");
+            try {
+            window.location.reload();
+            } catch (error) {
+            alert(error);
+            }
+            return;
+        });
+        closeConfirmPopup(); // Close the confirmation popup
+    }
+
+    function rejectReq() {
+        // Add your logic here for when the user disallows the top-up
+        socket.emit("reject_req", username, currentRequest, (res) => {
+            alert("Request Rejected!");
+            try {
+            window.location.reload();
+            } catch (error) {
+            alert(error);
+            }
+            return;
+        });
+        closeConfirmPopup(); // Close the confirmation popup
+    }
+
+    function closeConfirmPopup() {
+        document.getElementById('confirmPopup').style.display = 'none'; // Hide the confirmation popup
+    }
+
+    // Close popup when clicking outside
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('confirmPopup');
+        if (event.target !== popup && !popup.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+    });
+
+
+    document.getElementById('friendRequestsBtn').addEventListener('click', function(event) {
+        document.getElementById('friendRequestsPopup').style.display = 'block';
+        event.stopPropagation(); // Prevent click from immediately propagating to window
+    });
+
+    // Function to close the popup when clicking outside of it
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('friendRequestsPopup');
+        if (event.target !== popup && !popup.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+    });
+
+    // Prevent clicks inside the popup from propagating to the window
+    document.getElementById('friendRequestsPopup').addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+
+    document.getElementById('addFriendBtn').addEventListener('click', function(event) {
+        document.getElementById('addFriendPopup').style.display = 'block';
+        event.stopPropagation(); // Prevent click from immediately propagating to window
+    });
+    async function send_req() {
+        let receiverBefore = $("#receiver_req").val();
+        const receiver = await sanitize(receiverBefore);
+        // pass in the receiver of our message to the server
+        // as well as the current user's username
+        socket.emit("send_req", username, receiver, (res) => {
+            if (typeof res != "number") {
+                alert(res);
+                return;
+            }
+            try {
+            window.location.reload();
+            } catch (error) {
+            alert(error);
+            }
+            return;
+        });
+    }
+
+    async function sendFriendRequest() {
+        var receiver = document.getElementById('friendUsername').value;
+        // Implement actual friend request sending logic here
+        socket.emit("send_req", username, receiver, (res) => {
+            if (typeof res != "number") {
+                alert(res);
+                return;
+            }
+            try {
+            window.location.reload();
+            } catch (error) {
+            alert(error);
+            }
+            return;
+        });
+        document.getElementById('addFriendPopup').style.display = 'none';
+    }
+
+    // Function to close the popup when clicking outside of it
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('addFriendPopup');
+        if (event.target !== popup && !popup.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+    });
+
+    // Prevent clicks inside the popup from propagating to the window
+    document.getElementById('addFriendPopup').addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+
+    function openAddUserPopup(groupName) {
+        document.getElementById('addUserPopup').style.display = 'flex';  // Show the popup
+        // Store the current group name in an attribute for use when adding the user
+        document.getElementById('addUserPopup').setAttribute('data-group-name', groupName);
+    }
+
+    function closeAddUserPopup() {
+        document.getElementById('addUserPopup').style.display = 'none';
+    }
+
+    function addUserToGroup() {
+        var groupName = document.getElementById('addUserPopup').getAttribute('data-group-name');
+        var username = document.getElementById('newUser').value;
+        socket.emit("add_to_group", username, groupName, (res) => {
+            if (typeof res != "number") {
+                alert(res);
+                return;
+            }
+        });
+
+        closeAddUserPopup();  // Close the popup after adding the user
+    }
+
+    // Close popup when clicking outside
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('addUserPopup');
+        if (event.target === popup) {
+            closeAddUserPopup();
+        }
+    });
+
+
+
+
+
+
+
+    document.getElementById('createGroupChatBtn').addEventListener('click', function() {
+        document.getElementById('groupChatPopup').style.display = 'block';
+    });
+
+    function createGroupChat() {
+        var groupName = document.getElementById('groupChatName').value;
+        if (groupName.length > 40) {
+            alert("Group name too long!");
+            return;
+        }
+        if (groupName.trim() !== '') {
+            socket.emit("add_to_group", username, groupName, (res) => {
+                if (typeof res != "number") {
+                    alert(res);
+                    return;
+                }
+            });
+
+            document.getElementById('groupChatPopup').style.display = 'none';
+            window.location.reload();
+        } else {
+            alert("Please enter a group name.");
+        }
+    }
+
+    function closePopup() {
+        document.getElementById('groupChatPopup').style.display = 'none';
+    }
+
+    // Close popup if clicked outside of it
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('groupChatPopup');
+        if (!popup.contains(event.target) && event.target !== document.getElementById('createGroupChatBtn')) {
+          popup.style.display = 'none';
+        }
+    });
+
+    document.getElementById('groupChatPopup').addEventListener('click', function(event) {
+        event.stopPropagation();  // Stops the propagation to the window listener
+    });
+
+
+
+
+    document.getElementById('friendsBtn').addEventListener('click', function(event) {
+        socket.emit("get_friends", username, (res) => {
+            const friendsList = document.getElementById('friendsList');
+            friendsList.innerHTML = ''; // Clear existing items
+            res.forEach(friend => {
+                const li = document.createElement('li');
+                li.className = 'friend';
+                const a = document.createElement('a');
+                a.href = '#';
+                a.setAttribute('onclick', `remove_friend("${friend.name}")`);
+                const span = document.createElement('span');
+                span.id = `friend-name-${friend.name}`;
+                span.textContent = friend.name + '(' + friend.role + ') - ' + (friend.status === 'online' ? 'Online' : 'Offline');
+                a.appendChild(span);
+                li.appendChild(a);
+                friendsList.appendChild(li);
+            });
+            document.getElementById('friendsPopup').style.display = 'block';
+            event.stopPropagation(); 
+        });
+    });
+
+
+
+
+    // Function to close the popup if clicking outside of it
+    document.addEventListener('click', function(event) {
+        var isClickInside = document.getElementById('friendsPopup').contains(event.target);
+
+        if (!isClickInside) {
+            document.getElementById('friendsPopup').style.display = 'none';
+        }
+    });
+
+    // Prevent popup from closing when clicking inside it
+    document.getElementById('friendsPopup').addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+
+    function remove_friend(name) {
+        // Confirmation dialog
+        if (confirm("Are you sure you want to remove " + name + " from your friends list?")) {
+            socket.emit("remove", username, name);
+            window.location.reload();
+        }
+    }
+
+    window.onbeforeunload = function () {
+        leave();
+    }
+
+    $(document).ready(() => {
+        // room_id is undefined if the user hasn't joined a room
+        // we early return in this case
+        if (Cookies.get("room_id") == undefined) {
+            return;
+        }
+
+        // the user has already joined an existing room
+        // we'll display the message box, instead of the "Chat with: " box
+        $("#chat_box").hide();
+        $("#input_box").show();
+        room_id = parseInt(Cookies.get("room_id"));
+    })
+    
+    // Here's the Socket IO part of the code
+    // things get a bit complicated here so brace yourselves :P
+    let username = "{{ username }}";
+    let role = "{{ role }}";
+
+    Cookies.set('username', username);
+
+    // initializes the socket
+    const socket = io();
+
+    socket.on("incoming", async (msg, color="black") => {
+        if (in_group == 0 & (talking_to == msg.sender || msg.sender == username)){
+            await add_message(msg.message, color);
+        }
+        if (in_group == 1 & (talking_to == msg.sender)){
+            await add_message(msg.message, color);
+        }
+    })
+
+   
+    // we'll send the message to the server by emitting a "send" event
+    async function send() {
+        let message = $("#message").val();
+        document.getElementById('message').value = '';
+        document.getElementById('message').focus();
+        if (in_group == 0) {
+            socket.emit("send", username, talking_to, message, room_id);  
+        } else {
+            socket.emit("send_group", username, talking_to, message, room_id); 
+        }
+    } 
+
+
+    // function when the user clicks on "Leave Room"
+    // emits a "leave" event, telling the server that we want to leave the room
+    function leave() {
+        Cookies.remove("room_id");
+        socket.emit("leave", username, room_id);
+        window.location.reload();
+    }
+
+    socket.on("display_history", async (message, color="black") => {
+        await add_message(message, color);
+    })
+
+
+    // function to add a message to the message box
+    // called when an incoming message has reached a client
+    function add_message(message, color) {
+        let box = $(".chat-messages");
+        let child = $(`<p style="color:${color}; margin: 0px;"></p>`).text(message);
+        box.append(child);
+    }
+
+    let talking_to = "";
+    //////////////////////////////////////////
+    //////////////////////////////////////////
+    function join_room_friends(name) {
+        in_group = 0;
+        if (talking_to != name) {
+            $(".chat-messages").empty();
+            // pass in the receiver of our message to the server
+            // as well as the current user's username
+            talking_to = name;
+            socket.emit("join", username, name, (res) => {
+                // res is a string with the error message if the error occurs
+                // this is a pretty bad way of doing error handling, but watevs
+                if (typeof res != "number") {
+                    alert(res);
+                    return;
+                }
+
+                // set the room id variable to the room id returned by the server
+                room_id = res;
+                Cookies.set("room_id", room_id);
+
+            });
+            document.getElementById('message').focus();
+        }
+
+    }
+
+    let in_group = 0;
+    function join_group_chat(name) {
+        if (talking_to != name) {
+            $(".chat-messages").empty();
+            // pass in the receiver of our message to the server
+            // as well as the current user's username
+            talking_to = name;
+            socket.emit("join_group", username, talking_to, (res) => {
+                // res is a string with the error message if the error occurs
+                // this is a pretty bad way of doing error handling, but watevs
+                if (typeof res != "number") {
+                    alert(res);
+                    return;
+                }
+
+                // set the room id variable to the room id returned by the server
+                room_id = res;
+                Cookies.set("room_id", room_id);
+                in_group = 1;
+
+            });
+            document.getElementById('message').focus();
+        }
+
+    }
+
+
+
+
+    async function sanitize(string) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#x27;',
+            "/": '&#x2F;',
+        };
+        const reg = /[&<>"'/]/ig;
+        return string.replace(reg, (match)=>(map[match]));
+    }
+
+
+
+    //////////////////////////////////////////
+    //////////////////////////////////////////
+
+    
+</script>
+{% endblock %}

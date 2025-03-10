@@ -1,0 +1,775 @@
+<!-- 
+    Here you'll find the main exhibit: the chat application code. Feel free to look around!
+-->
+{% extends 'base.jinja' %}
+
+
+{% block content %} 
+   <style>
+    nav {
+        border-bottom: 1px solid black;
+        overflow: auto }
+
+    #message_box {
+        border: 1px solid black; 
+        height: 400px; 
+        width: 800px; 
+        overflow: auto;
+        padding: 2px;
+    }
+
+    .text  {
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+
+    html, body {
+        height: 100vh; /* Use viewport height here to ensure full height is covered */
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Prevents scrolling on the body */
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        display: flex;
+        width: 100%;
+        height: calc(100vh - 70px); /* Ensuring the container takes up the entire viewport height */
+        overflow: hidden; /* Prevents additional scroll bars */
+    }
+
+    .friends-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    }
+
+    #groupChatPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        right: 20px;
+        top: 50px;
+        width: 300px;
+        height: 200px;
+        border: 1px solid black;
+        background-color: white;
+        z-index: 100;
+        padding: 20px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between; /* Aligns children to each end */
+        align-items: center; /* Aligns children vertically in the center */
+    }
+
+    .friends-list {
+        display: flex;
+        flex-direction: column;
+        height: 100%; /* Example fixed height, adjust based on your layout needs */
+        border: 1px solid #ccc; /* Optional: adds a border around the friends list */
+        margin: 10px;
+        padding: 5px;
+        background-color: #f9f9f9; /* Light background color for the list */
+    }
+
+    .friend-list, .group-chat-list {
+        overflow-y: auto; /* Adds scroll if the list is too long */
+        flex: 1; /* Each list takes equal space */
+        margin: 0;
+        padding: 0;
+    }
+
+    .friends-header, .group-chats-header {
+        padding: 10px;
+        background-color: #e8e8e8; /* Slightly darker shade for headers */
+        font-weight: bold;
+        border-bottom: 1px solid #d3d3d3; /* Adds a subtle line under the header */
+    }
+
+    .friends-list {
+        flex: 1;
+        padding: 0;
+        background-color: #f3f3f3;
+        overflow: hidden; /* Prevents additional scroll bars */
+    }
+
+    .friends-header {
+        font-size: 24px; /* Larger font size */
+        font-weight: bold; /* Makes the text bold */
+        color: #333; /* Dark gray color for better readability */
+        padding-bottom: 10px; /* Space between header and list */
+        margin-bottom: 10px; /* Adds bottom margin to separate from the list */
+        border-bottom: 2px solid #ccc; /* Subtle line under the text */
+        text-align: center; /* Centers the text */
+        position: sticky;
+        top: 0; /* Sticks to the top of the container */
+        background-color: inherit; /* Ensures the background matches the friends list */
+        z-index: 1; /* Ensures it stays on top during scrolling */
+    }
+
+    .friend-list {
+        overflow-y: auto; /* Makes the list scrollable */
+        height: 100%; /* Adjust height based on the header size */
+        margin: 0;
+        padding: 0;
+        list-style-type: none; /* Removes bullet points */
+    }
+
+    .friends-list .text {
+        font-size: 24px; /* Larger font size */
+        font-weight: bold; /* Makes the text bold */
+        color: #333; /* Dark gray color for better readability */
+        padding: 10px 0; /* Adds vertical padding above and below the text */
+        margin: 0 0 10px 0; /* Adds bottom margin to separate from the list */
+        border-bottom: 2px solid #ccc; /* Optional: adds a subtle line under the text */
+        text-align: center; /* Centers the text */
+    }
+
+    .chat-box {
+        flex: 3;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+        min-height: 0;
+    }
+
+    .chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto; /* Ensures this part is scrollable */
+        min-height: 0;
+    }
+
+    .chat-form {
+        display: flex;
+        width: 100%;
+        height: 50px;
+        flex-shrink: 0;
+    }
+
+    .chat-form input[type="text"] {
+        flex-grow: 1;
+        padding: 8px;
+        border: 1px solid #ccc
+    }
+
+    .chat-form button {
+        padding: 8px 16px;
+        cursor: pointer;
+    }
+
+    ul.friend-list {
+        list-style-type: none; /* Removes bullet points */
+        padding: 0; /* Removes default padding */
+        margin: 0; /* Removes default margin */
+    }
+
+    li.friend {
+        border: 1px solid #ccc; /* Adds a subtle border to each friend item */
+        padding: 8px; /* Adds padding inside each item for better spacing */
+        margin-bottom: 5px; /* Adds space between items */
+    }
+
+    li.friend a {
+        text-decoration: none; /* Removes underline from links */
+        color: black; /* Sets text color */
+        display: block; /* Makes the link fill the entire list item for easier clicking */
+    }
+
+    .friend-list li, .group-chat-list li {
+        padding: 10px;
+        border-bottom: 1px solid #eee; /* Adds a subtle line between items */
+        list-style: none; /* Removes bullet points */
+    }
+
+    .friend-list li a, .group-chat-list li a {
+        color: #333; /* Dark text for better readability */
+        text-decoration: none; /* Removes underline */
+        display: block; /* Makes the entire list item clickable */
+    }
+
+    .friend-list li a:hover, .group-chat-list li a:hover {
+        background-color: #f0f0f0; /* Light grey background on hover */
+    }
+
+    button {
+        padding: 5px 10px;
+        cursor: pointer;
+    }
+
+    #friendsPopup {
+        padding: 20px;
+        position: fixed;
+        right: 20px;
+        top: 50px;
+        width: 300px;
+        max-height: 400px; /* Set a maximum height */
+        border: 1px solid black;
+        background-color: white;
+        z-index: 100;
+        overflow-y: auto; /* Enables vertical scrolling if content exceeds the max-height */
+    }
+
+    #createGroupChatBtn {
+        padding: 5px 10px;
+        font-size: 0.8em;
+        margin-left: 10px; /* Adds a little space to the left of the button */
+        cursor: pointer;
+    }
+
+    .friend {
+        list-style-type: none; /* Removes bullet points */
+    }
+
+    .group-chat-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .group-chat-list button {
+        padding: 5px 10px;
+        margin-left: 10px;  /* Spacing between group name and button */
+    }
+
+    /* Popup styles */
+    #addUserPopup {
+        display: flex;  /* Uses flex to center the inner box */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);  /* Semi-transparent background */
+        z-index: 100;
+    }
+    #addUserPopup > div {
+        background-color: white;
+        padding: 20px;
+        width: 300px;  /* Fixed width for the popup */
+    }
+
+    #addFriendPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 100;
+    }
+
+    #friendRequestsPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px; /* Define width to accommodate both lists */
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 100;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1); /* Optional: adds shadow for better visibility */
+    }
+
+    #incomingRequests, #outgoingRequests {
+        height: 200px;
+        overflow-y: auto; /* Enables scrolling */
+        border: 1px solid #ccc; /* Adds border for better definition */
+        padding: 10px;
+    }
+
+    .friend-requests li, .friend-requests_out li {
+        border-bottom: 1px solid #ccc;
+        padding: 10px;
+        list-style-type: none; /* Removes default list bullets */
+    }
+
+    .friend-requests li button, .friend-requests_out li button {
+        margin-left: 10px;
+    }
+
+    /* You might want to add some hover effects for better UI experience */
+    .friend-requests li button:hover, .friend-requests_out li button:hover {
+        background-color: #e0e0e0;
+    }
+
+    .friend-requests .req span {
+        display: block; /* Makes the span take the full width of its container */
+        padding: 8px 12px; /* Padding for better touch area and visibility */
+        margin: 5px 0; /* Space between items */
+        border: 1px solid #ccc; /* Border around the name */
+        border-radius: 4px; /* Optional: rounded corners for the border */
+        transition: background-color 0.3s, border-color 0.3s; /* Smooth transition for hover effects */
+        cursor: pointer; /* Changes the cursor to indicate it's clickable */
+    }
+
+    .friend-requests .req span:hover {
+        background-color: #f0f0f0; /* Light grey background on hover */
+        border-color: #999; /* Darker border on hover */
+    }
+
+    #confirmPopup {
+        display: none; /* Hidden by default */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 105;
+    }
+
+    a, button {
+        padding: 5px 10px;
+        margin: 2px;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        text-decoration: none; /* Remove underline from links */
+        color: black; /* Set text color for the link */
+    }
+
+    a:hover, button:hover {
+        background-color: #e0e0e0; /* Hover effect */
+    }
+
+    /* ***************************************************************************************** */
+    /* ***************************************************************************************** */
+    /* ***************************************************************************************** */
+    /* Form Page CSS */
+    /* ***************************************************************************************** */
+    /* ***************************************************************************************** */
+    /* ***************************************************************************************** */
+
+
+
+    .forum-container {
+        max-width: 600px;
+        height: 90vh;
+        overflow-y: auto;
+        padding: 20px 0;
+    }
+
+    .post-box {
+        background-color: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin: 20px 0;
+        padding: 20px;
+        border-radius: 8px;
+    }
+
+    .post-box h2, .post-box p {
+        white-space: nowrap;  /* Prevents the text from wrapping to the next line */
+        overflow: hidden;  /* Keeps the text within the element's bounds */
+        text-overflow: ellipsis;  /* Adds ellipsis when text overflows */
+        margin: 5px 0;  /* Provides some spacing around text */
+        padding: 0 10px;  /* Padding inside the box, adjust as needed */
+        max-width: 100%;  /* Ensures the text does not exceed the box's width */
+    }
+
+    .post-box h2 {
+        color: #333;
+    }
+
+    .post-box p {
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .forum-container {
+        width: 50%;
+        float: left;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .post-box {
+        cursor: pointer;
+        /* existing styles */
+    }
+
+    .post-detail-popup {
+        display: none; /* Hidden by default */
+        position: fixed; /* Positioned relative to the viewport */
+        left: 600px;
+        right: 0; /* Align to the right side of the viewport */
+        top: 65px;
+        height: 100vh; /* Full height */
+        background-color: white;
+        padding: 20px;
+        box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+        overflow-y: auto; /* Enable scrolling if content is long */
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        margin: 5px 0;
+        padding: 5px;
+    }
+
+        .popup {
+            position: fixed;
+            width: 300px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: white;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+    .input-text {
+        width: 90%;  /* Makes the input field take up most of the popup width */
+        padding: 8px 10px;  /* Adds padding inside the input field for better text visibility */
+        margin: 5px 0;  /* Adds some space around the input field */
+        border: 1px solid #ccc;  /* Subtle border for the input */
+        border-radius: 4px;  /* Rounded corners for the input field */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);  /* Soft shadow around the input field */
+        font-size: 16px;  /* Larger font size for easier reading */
+    }
+
+    .textarea-text {
+        width: 90%;  /* Consistent width with the input field */
+        height: 100px;  /* Larger area for text entry */
+        padding: 8px 10px;
+        margin: 5px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        font-size: 16px;
+        resize: vertical;  /* Allows the user to resize the textarea vertically */
+    }
+
+    .comment-box {
+        padding: 10px;
+        margin: 5px 0;
+        background-color: #f4f4f4;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 40%; /* Could be more or less, depending on screen size */
+}
+
+label {
+    display: block; /* makes the label take up the full width for better alignment */
+    margin: 5px 0; /* adds some space around the label for better readability */
+}
+
+input[type="checkbox"] {
+    margin-left: 5px; /* adds a small space before the checkbox for visual separation */
+    vertical-align: middle; /* aligns checkbox vertically with the text */
+}
+
+
+</style>
+
+<!--Navbar, you'll see the username here-->
+<nav style="border-bottom: 1px solid black;">
+    <ol style="float: left">
+        <li style="display:inline-block">{{ username }}</li>
+    </ol>
+    <ol style="float: right">
+        {% if mute == 'false' %}
+            <li style="display: inline-block;"><button id="newPostBtn">New Post</button></li>
+        {% endif %}
+        {% if role != 'student' %}
+            <li style="display: inline-block;"><button id="settingsBtn">Settings</button></li>
+        {% endif %}
+        <li style="display: inline-block;"><button onclick="goToChats()">Chats</button></li>
+    </ol>
+</nav>
+<!-- Popup form for creating a new post -->
+<div id="createPostPopup" class="popup" style="display: none;">
+    <form id="createPostForm">
+        <label for="postTitle">Title:</label>
+        <input type="text" id="postTitle" name="postTitle" required><br>
+        <label for="postBody">Body:</label>
+        <textarea id="postBody" name="postBody" required></textarea><br>
+        <label for="postAnonymous" style="display: inline;">Anonymous:</label>
+        <input type="checkbox" id="postAnonymous" name="postAnonymous"><br>
+        <button type="submit">Submit</button>
+        <button type="button" onclick="toggleCreatePostPopup(false)">Cancel</button>
+    </form>
+</div>
+
+<main>
+    <div class="forum-container">
+        {% for post in posts %}
+          <div class="post-box" onclick="showPostDetails('{{ post.title }}', '{{ post.username }}', '{{ post.index}}', '{{ post.body }}')">
+                <h2>{{ post.title }}</h2>
+                <p>Posted by: {{ post.username }} ({{ post.role }})</p>
+            </div>
+        {% endfor %}
+    </div>
+    <div id="postDetailPopup" class="post-detail-popup">
+        <!-- Details will be injected here -->
+    </div>
+
+        <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <p>Are you sure you want to delete this comment?</p>
+            <button id="confirmDelete">Delete</button>
+            <button id="cancelDelete">Cancel</button>
+        </div>
+    </div>
+    <div id="postDeletionModal" class="modal">
+    <div class="modal-content">
+        <p>Are you sure you want to delete this post?</p>
+        <button onclick="confirmPostDeletion(true)">Yes, Delete It</button>
+        <button onclick="confirmPostDeletion(false)">Cancel</button>
+    </div>
+    </div>
+
+
+</main>
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+<script>
+    let room_id = 0;
+
+    $(document).ready(() => {
+        // room_id is undefined if the user hasn't joined a room
+        // we early return in this case
+        if (Cookies.get("room_id") == undefined) {
+            return;
+        }
+
+        // the user has already joined an existing room
+        // we'll display the message box, instead of the "Chat with: " box
+        $("#chat_box").hide();
+        $("#input_box").show();
+        room_id = parseInt(Cookies.get("room_id"));
+    })
+    
+    // Here's the Socket IO part of the code
+    // things get a bit complicated here so brace yourselves :P
+    let username = "{{ username }}";
+    let role = "{{ role }}";
+    let mute = "{{ mute }}";
+
+    Cookies.set('username', username);
+
+    // initializes the socket
+    const socket = io();
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    document.getElementById('settingsBtn')?.addEventListener('click', function() {
+        window.location.href = '{{ url_for("settings") }}';  // Flask's url_for to handle routing
+    });
+
+    function goToChats() {
+        var url = "{{ url_for('home', username=username) }}"; // Flask generates URL
+        window.open(url, "_self");
+    }
+
+
+    function showPostDetails(title, post_username, index, body) {
+        localStorage.setItem('createPostPopupOpen', 'true');
+        localStorage.setItem("title", title);
+        localStorage.setItem("post_username", post_username);
+        localStorage.setItem("index", index);
+        localStorage.setItem("body", body);
+
+        var popup = document.getElementById('postDetailPopup');
+        var modifyButton = ((username == post_username || role != "student") && mute == "false") ? `<div><button onclick="modifyPost('${index}', '${title}', '${body}')">Modify Post</button></div>` : '';
+        var commentButton = mute == "false" ? `<textarea id='comment-input-${index}' placeholder='Write a comment...'></textarea><button onclick='submitComment(${index})'>Submit Comment</button>` : '';
+        popup.innerHTML = `
+            <h2>${title} #${index}</h2>
+            <p>Posted by: ${post_username}</p>
+            <p>${body}</p>
+            ${modifyButton}
+            ${commentButton}
+            <div id='comments-container-${index}'></div>
+        `;
+        popup.style.display = 'block'; // Show the popup
+        socket.emit("display_comments", index);
+    }
+
+
+    function deletePost(index) {
+        document.getElementById('postDeletionModal').style.display = 'block';
+        window.confirmPostDeletion = function(confirmDeletion) {
+            if (confirmDeletion) {
+                socket.emit('delete_post', index);  // Emit the post deletion event to the server
+                localStorage.removeItem('createPostPopupOpen');  // Cleanup any relevant state in local storage
+                window.location.reload();  // Reload the page to reflect changes
+            } else {
+                console.log("Post deletion canceled by the user.");
+            }
+            document.getElementById('postDeletionModal').style.display = 'none';  // Hide the modal
+        }
+    }
+
+
+
+
+    function savePostChanges(index) {
+        var newTitle = document.getElementById(`edit-post-title-${index}`).value;
+        var newBody = document.getElementById(`edit-post-body-${index}`).value;
+        // Emit update to server
+        socket.emit('update_post', username, newTitle, newBody, index);
+        // Optionally update UI immediately or wait for confirmation from server
+        showPostDetails(newTitle, "{{ username }}", index, newBody);
+    }
+
+    function modifyPost(index, title, body) {
+        // Assuming `title` and `body` can be fetched from somewhere or passed additionally if needed
+        var popup = document.getElementById('postDetailPopup');
+        popup.innerHTML = `
+            <input type="text" class="input-text" id="edit-post-title-${index}" value="${title}" />
+            <textarea class="textarea-text" id="edit-post-body-${index}">${body}</textarea>
+            <br>
+            <button onclick="deletePost('${index}')">DeletePost</button>
+            <button onclick="savePostChanges('${index}')">Save Changes</button>
+            <button onclick="showPostDetails('${title}', '${username}', '${index}', '${body}')">Cancel</button>
+        `;
+    }
+
+    socket.on('load_comment', async (data) => {
+        appendComment(data.post_index, data.username, data.comment, data.comment_index, data.role);
+    });
+
+    function submitComment(index) {
+        var input = document.getElementById(`comment-input-${index}`);
+        var comment = input.value; // Get the comment text from the input box
+        if(comment.trim() !== "") {
+            socket.emit('create_comment', index, comment, username);
+            input.value = ''; // Clear the input box after sending the comment
+            var popup = document.getElementById(`postDetailPopup`);
+            window.location.reload();
+        }
+    }
+
+    function appendComment(index, username, comment, comment_index, comment_role) {
+        var commentsContainer = document.getElementById(`comments-container-${index}`);
+        console.log(`Rendering comment - Username: ${username}, Role: ${comment_role}, Comment: ${comment}`);
+        var commentHTML = role !== "student" ?
+        `<div class='comment-box' onclick='handleCommentClick("${index}", "${comment_index}")'>${username} (${comment_role}): ${comment}</div>` :
+            `<p>${username} (${comment_role}): ${comment}</p>`;
+        commentsContainer.innerHTML += commentHTML; // Append each new comment
+    }
+
+    var modal = document.getElementById("confirmationModal");
+    var confirmBtn = document.getElementById("confirmDelete");
+    var cancelBtn = document.getElementById("cancelDelete");
+
+    function handleCommentClick(post_index, comment_index){
+        modal.style.display = "block";
+
+        // Confirm button event
+        confirmBtn.onclick = function() {
+            socket.emit("delete_comment", post_index, comment_index);
+            window.location.reload();
+            modal.style.display = "none";
+        }
+
+        // Cancel button event
+        cancelBtn.onclick = function() {
+            modal.style.display = "none";
+            console.log("Comment deletion canceled by user.");
+        }
+
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    document.getElementById('newPostBtn').addEventListener('click', function(event) {
+        toggleCreatePostPopup(true); 
+        event.stopPropagation();  // Prevent click from reaching the window (important to prevent closing)
+    });
+
+    function toggleCreatePostPopup(show) {
+        var popup = document.getElementById('createPostPopup');
+        popup.style.display = show ? 'block' : 'none';
+    }
+    window.addEventListener("load", function() { 
+  // Your code here 
+        if (localStorage.getItem('createPostPopupOpen') == 'true') {
+            var title = localStorage.getItem("title");
+            var post_username = localStorage.getItem("post_username");
+            var index = localStorage.getItem("index");
+            var body = localStorage.getItem("body");
+            showPostDetails(title, post_username, index, body);
+        }
+    });
+    // Prevent closing the popup when clicking inside
+    document.getElementById('createPostPopup').addEventListener('click', function(event) {
+        event.stopPropagation();  // Prevent the click inside the popup from closing it
+    });
+
+    // Close popup when clicking outside
+    window.addEventListener('click', function(event) {
+        var popup = document.getElementById('createPostPopup');
+        if (popup.style.display === 'block' && !popup.contains(event.target)) {
+            toggleCreatePostPopup(false);
+        }
+    });
+
+    document.getElementById('createPostForm').addEventListener('submit', function(event) {
+        event.preventDefault();  // Prevent the form from submitting traditionally
+        const title = document.getElementById('postTitle').value;
+        const body = document.getElementById('postBody').value;
+        console.log('Title:', title, 'Body:', body);  // For demonstration: handle post creation here
+        toggleCreatePostPopup(false);  // Hide the popup after submission
+    });
+
+    document.getElementById('createPostForm').addEventListener('submit', function(event) {
+        event.preventDefault();  // Prevent the form from traditionally submitting
+
+        const title = document.getElementById('postTitle').value;
+        const body = document.getElementById('postBody').value;
+        const postAnonymously = document.getElementById('postAnonymous').checked;
+
+        // Emit the post data to the server
+        socket.emit('create_post', username, title, body, postAnonymously);
+
+        toggleCreatePostPopup(false);  // Hide the popup after submission
+        window.location.reload();
+    });
+
+
+
+
+
+
+
+
+
+
+    
+</script>
+{% endblock %}

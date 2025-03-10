@@ -1,0 +1,96 @@
+<!-- 
+Sign up page, pretty much the same as login.
+-->
+{% extends 'base.jinja' %}
+
+
+{% block content %} 
+    <h1>Sign Up</h1>
+    <p>Username</p>
+    <input id="username"/>
+    <p>Password</p>
+    <input id="password" type="password"/>
+    <button onclick="signup()">Sign up</button>
+
+    <script src="/static/js/libs/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+    <script>
+        function isStrong(string) {
+            let passwordChecklist = document.querySelectorAll('.list-item');
+            let validationRegex = [
+                { regex: /.{8,}/ }, // min 8 letters,
+                { regex: /[0-9]/ }, // numbers from 0 - 9
+                { regex: /[a-z]/ }, // letters from a - z (lowercase)
+                { regex: /[A-Z]/}, // letters from A-Z (uppercase),
+                { regex: /[^A-Za-z0-9]/} // special characters
+            ]
+            let isValid = true;
+            validationRegex.forEach((item, i) => {
+                if (item.regex.test(string) == false) {
+                    isValid = false;
+                }
+            })
+            return isValid;
+        }
+
+        function isValidURL(string) {
+            if (string.length == 0) {
+                return false;
+            }
+            if (string[0] == "/") {
+                return true;
+            }
+            return false;
+        }
+
+        async function sanitize(string) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#x27;',
+                "/": '&#x2F;',
+            };
+            const reg = /[&<>"'/]/ig;
+            return string.replace(reg, (match)=>(map[match]));
+        }
+
+        // this function is identical to login(), see login.jinja
+        async function signup() {
+            let loginURL = "{{ url_for('signup_user') }}";
+            const password = $("#password").val();
+            let goodPassword = isStrong(password)
+            goodPassword = true;
+            if (goodPassword == false) {
+                alert("Password does not meet criteria, please retry");
+                return;
+            }
+            let username = $("#username").val();
+            if (username.length > 30) {
+                alert("Username too long")
+                return;
+            }
+            try{
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                const usernameBefore = $("#username").val();
+                const username = await sanitize(usernameBefore);
+                let res = await axios.post(loginURL, {
+                    username: username,
+                    password: hashHex
+                });
+                if (!isValidURL(res.data)) {
+                    alert(res.data);
+                    return;
+                }
+                window.open(res.data, "_self")
+            } catch (error) {
+            alert(error)
+            }
+        }
+    </script>
+{% endblock %}
